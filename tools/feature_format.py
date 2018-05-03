@@ -2,16 +2,80 @@ import pandas as pd
 import numpy as np
 
 
-def feature_format(data_dict, features, remove_all_zeros=True):
-    df = pd.DataFrame.from_dict(data_dict, orient='index')
-    res_df = df[features]
-    if remove_all_zeros:
-        for i in range(len(features)):
+def featureFormat(dictionary, features, remove_NaN=True, remove_all_zeroes=True, remove_any_zeroes=False,
+                  sort_keys=False):
+    """ convert dictionary to numpy array of features
+        remove_NaN = True will convert "NaN" string to 0.0
+        remove_all_zeroes = True will omit any data points for which
+            all the features you seek are 0.0
+        remove_any_zeroes = True will omit any data points for which
+            any of the features you seek are 0.0
+        sort_keys = True sorts keys by alphabetical order. Setting the value as
+            a string opens the corresponding pickle file with a preset key
+            order (this is used for Python 3 compatibility, and sort_keys
+            should be left as False for the course mini-projects).
+        NOTE: first feature is assumed to be 'poi' and is not checked for
+            removal for zero or missing values.
+    """
+
+    return_list = []
+
+    # Key order - first branch is for Python 3 compatibility on mini-projects,
+    # second branch is for compatibility on final project.
+    # if isinstance(sort_keys, str):
+    #     import pickle
+    #     keys = pickle.load(open(sort_keys, "rb"))
+    # elif sort_keys:
+    #     keys = sorted(dictionary.keys())
+    # else:
+    #     keys = dictionary.keys()
+    keys = pd.read_csv(r'C:\Users\IVAN.SEMENYSHYN\PycharmProjects\Udacity_ML\Lesson_14\python2_lesson13_keys.pkl')
+    keys = [x.split("'")[1] for x in keys['(lp0'][0:-1:2]]
+
+    for key in keys:
+        tmp_list = []
+        for feature in features:
             try:
-                res_df = res_df.loc[(res_df[features[i]] != 0) & (res_df[features[i]] != 'NaN')]
-            except:
-                pass
-    return_array = []
-    for i in features:
-        return_array.append(res_df.as_matrix(columns=[i]))
-    return return_array
+                dictionary[key][feature]
+            except KeyError:
+                print("error: key ", feature, " not present")
+                return
+            value = dictionary[key][feature]
+            if value == "NaN" and remove_NaN:
+                value = 0
+            tmp_list.append(float(value))
+
+        # Logic for deciding whether or not to add the data point.
+        append = True
+        # exclude 'poi' class as criteria.
+        if features[0] == 'poi':
+            test_list = tmp_list[1:]
+        else:
+            test_list = tmp_list
+        ### if all features are zero and you want to remove
+        ### data points that are all zero, do that here
+        if remove_all_zeroes:
+            append = False
+            for item in test_list:
+                if item != 0 and item != "NaN":
+                    append = True
+                    break
+        ### if any features for a given data point are zero
+        ### and you want to remove data points with any zeroes,
+        ### handle that here
+        if remove_any_zeroes:
+            if 0 in test_list or "NaN" in test_list:
+                append = False
+        ### Append the data point if flagged for addition.
+        if append:
+            return_list.append(np.array(tmp_list))
+    return np.array(return_list)
+
+
+def targetFeatureSplit(data):
+    target = []
+    features = []
+    for item in data:
+        target.append(item[0])
+        features.append(item[1:])
+    return target, features
